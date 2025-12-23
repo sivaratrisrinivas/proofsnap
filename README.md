@@ -54,7 +54,11 @@ proofsnap/
 │   └── tsconfig.json       # TypeScript configuration
 ├── smart-contracts/        # Hardhat project
 │   ├── contracts/          # Solidity smart contracts
+│   │   ├── ProofSnap.sol   # Main contract for media provenance
+│   │   └── Lock.sol        # Sample contract (template)
 │   ├── test/               # Contract tests
+│   │   ├── ProofSnap.ts    # Tests for ProofSnap contract
+│   │   └── Lock.ts         # Tests for Lock contract
 │   ├── ignition/           # Deployment modules
 │   ├── hardhat.config.ts   # Hardhat configuration
 │   └── package.json        # Dependencies and scripts
@@ -162,8 +166,24 @@ npx hardhat node
 
 Deploy contracts:
 ```bash
+# Deploy sample Lock contract
 npx hardhat ignition deploy ./ignition/modules/Lock.ts
+
+# Deploy ProofSnap contract (when deployment module is created)
+# npx hardhat ignition deploy ./ignition/modules/ProofSnap.ts
 ```
+
+#### Contract Details
+
+The **ProofSnap** contract implements the core media provenance system:
+
+- **Proof Struct**: Stores content hash, timestamp, creator address, location data, and device ID
+- **registerMedia()**: Registers a new media proof on-chain (prevents duplicates)
+- **getProof()**: Retrieves proof data by content hash
+- **proofExists()**: Checks if a proof exists for a given hash
+- **MediaRegistered Event**: Emitted when new media is registered
+
+The contract matches the specification in `spec.md` and provides immutable proof storage on Polygon.
 
 ## API Endpoints
 
@@ -179,8 +199,21 @@ npx hardhat ignition deploy ./ignition/modules/Lock.ts
 
 The system follows a hybrid storage model:
 - **IPFS**: Stores the actual image files (decentralized)
-- **Polygon Blockchain**: Stores cryptographic proofs (content hash, timestamp, creator)
+- **Polygon Blockchain**: Stores cryptographic proofs via ProofSnap contract
+  - Content hash (SHA-256 of pixel data)
+  - Timestamp (immutable capture time)
+  - Creator address (wallet of photographer)
+  - Location data (optional encrypted coordinates)
+  - Device ID (hashed device identifier)
 - **Supabase**: Stores user profiles and off-chain index data for fast querying
+
+### Smart Contract Flow
+
+1. Mobile app captures image and generates SHA-256 hash
+2. User signs the hash with their wallet
+3. Backend uploads image to IPFS
+4. Backend calls `ProofSnap.registerMedia()` on Polygon with hash and metadata
+5. Proof is permanently stored on-chain and can be verified via `getProof()`
 
 ## License
 
