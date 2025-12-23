@@ -1,0 +1,3 @@
+[env]
+SUPABASE_URL = "https://flqaswajjpwspvtxzcen.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZscWFzd2FqanB3c3B2dHh6Y2VuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY0Mzc1OTIsImV4cCI6MjA4MjAxMzU5Mn0.vxy30xomIqqBA-LfzjdaYPntdUSuUwXX1rB8Vho5x18"

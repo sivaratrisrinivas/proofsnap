@@ -9,6 +9,7 @@ A modern full-stack application with backend API and mobile app.
 - **Framework**: [Hono](https://hono.dev) - Ultrafast web framework
 - **Language**: TypeScript
 - **Validation**: Zod with `@hono/zod-validator`
+- **Database**: [Supabase](https://supabase.com) - PostgreSQL database
 
 ### Mobile
 - **Framework**: [Expo](https://expo.dev) - React Native framework
@@ -24,7 +25,9 @@ proofsnap/
 ├── backend/
 │   ├── index.ts          # Main application entry point
 │   ├── package.json      # Dependencies and scripts
-│   └── tsconfig.json     # TypeScript configuration
+│   ├── tsconfig.json     # TypeScript configuration
+│   ├── bunfig.toml       # Bun environment configuration
+│   └── test-db.ts        # Supabase database test utility
 ├── mobile/
 │   ├── App.tsx           # Main React Native component
 │   ├── index.ts          # App entry point
@@ -41,12 +44,23 @@ proofsnap/
 - [Bun](https://bun.sh) installed (v1.2.23+)
 - [Node.js](https://nodejs.org/) (for Expo CLI)
 - [Expo Go](https://expo.dev/client) app on your mobile device (optional)
+- Supabase account and project (for backend database)
 
 ### Backend Setup
 
 ```bash
 cd backend
 bun install
+```
+
+#### Environment Configuration
+
+Configure Supabase credentials in `backend/bunfig.toml`:
+
+```toml
+[env]
+SUPABASE_URL = "your-supabase-url"
+SUPABASE_ANON_KEY = "your-supabase-anon-key"
 ```
 
 #### Development
@@ -58,6 +72,14 @@ bun run dev
 ```
 
 The server will start and watch for file changes.
+
+#### Database Testing
+
+Test Supabase connection:
+
+```bash
+bun run test-db.ts
+```
 
 #### Type Checking
 
