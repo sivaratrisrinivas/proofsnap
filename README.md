@@ -29,7 +29,8 @@ A "Super Normal" camera application that establishes media provenance at the poi
   - `expo-camera`: For capturing media (✅ implemented)
   - `expo-crypto`: For SHA-256 hash generation (✅ implemented)
   - `expo-file-system`: Available for local file manipulation
-  - `ethers` (v6): For wallet creation and blockchain interaction (⏳ TODO)
+  - `ethers` (v6): For wallet creation and blockchain interaction (✅ implemented)
+  - `expo-secure-store`: For secure wallet key storage (✅ implemented)
   - `skia` (React Native Skia): For high-performance watermark compositing (⏳ TODO)
 
 ### Smart Contracts (The Trust Layer)
@@ -174,7 +175,8 @@ The mobile app currently includes:
   - ✅ SHA-256 hash generation using `expo-crypto`
   - ✅ Photo preview with hash display
   - ✅ Permission handling with `useCameraPermissions` hook
-  - ⏳ Wallet service integration (TODO)
+  - ✅ Wallet integration via `useWallet` hook
+  - ✅ Cryptographic signing of image hash with wallet
   - ⏳ API service for minting (TODO)
   - ⏳ Secure button functionality (TODO)
 
@@ -339,11 +341,14 @@ The proof is now permanently stored on-chain and can be verified via `getProof()
 - Photo preview UI
 - Camera permissions handling
 - Expo Camera plugin configured
+- Wallet generation and management (useWallet hook)
+- Secure wallet key storage with expo-secure-store
+- Cryptographic image hash signing with ethers.js
+- Wallet UI overlay in HomeScreen
 
 ### ⏳ In Progress / TODO
 
 **Mobile:**
-- Wallet service (create/manage wallet with ethers v6)
 - API service (integrate with `/api/v1/mint` endpoint)
 - Secure button functionality (connect to minting flow)
 - Location services integration

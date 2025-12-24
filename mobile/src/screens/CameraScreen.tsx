@@ -2,15 +2,21 @@ import React, { useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Crypto from 'expo-crypto';
+import { ethers } from 'ethers';
 
 // Define captured photo state type
 interface CapturedPhoto {
     uri: string;
     base64: string;
     hash: string;
+    signature?: string;
 }
 
-export default function CameraScreen() {
+interface CameraScreenProps {
+    wallet?: ethers.Wallet | ethers.HDNodeWallet | null;
+}
+
+export default function CameraScreen({ wallet }: CameraScreenProps) {
     const cameraRef = useRef<CameraView>(null);
     const [permission, requestPermission] = useCameraPermissions();
     const [capturedPhoto, setCapturedPhoto] = useState<CapturedPhoto | null>(null);
@@ -66,11 +72,27 @@ export default function CameraScreen() {
             console.log('Hash:', contentHash);
             console.log('Base64 length:', fileDataBase64.length);
 
+            // Sign the hash with the wallet (Step 17)
+            let signature: string | undefined;
+            if (wallet) {
+                try {
+                    // Sign the hash (prefixed with 0x for proper bytes32 format)
+                    const hashToSign = '0x' + contentHash;
+                    signature = await wallet.signMessage(hashToSign);
+                    console.log('✍️ Signature:', signature);
+                } catch (signError) {
+                    console.error('❌ Signing error:', signError);
+                }
+            } else {
+                console.warn('⚠️ No wallet available for signing');
+            }
+
             // Store for later use - properly typed
             setCapturedPhoto({
                 uri: fileUri,
                 base64: fileDataBase64,
                 hash: contentHash,
+                signature,
             });
 
             setIsLoading(false);

@@ -1,6 +1,6 @@
 import React from 'react';
-import CameraScreen from './src/screens/CameraScreen';
+import HomeScreen from './app/(tabs)/index';
 
 export default function App() {
-  return <CameraScreen />;
+  return <HomeScreen />;
 }
