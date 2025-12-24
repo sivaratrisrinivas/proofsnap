@@ -16,7 +16,8 @@ A "Super Normal" camera application that establishes media provenance at the poi
 - **Language**: TypeScript
 - **Validation**: Zod with `@hono/zod-validator`
 - **Database**: [Supabase](https://supabase.com) - PostgreSQL database for user profiles and off-chain indexing
-- **Storage**: IPFS (via Pinata API) - Decentralized file storage
+- **Storage**: IPFS (via [Pinata](https://pinata.cloud) API) - Decentralized file storage
+- **Blockchain**: [ethers.js](https://ethers.org) v6 - For smart contract interaction
 
 ### Mobile (The "Super Normal" Interface)
 - **Framework**: [Expo](https://expo.dev) - React Native framework
@@ -31,10 +32,11 @@ A "Super Normal" camera application that establishes media provenance at the poi
   - `skia` (React Native Skia): For high-performance watermark compositing
 
 ### Smart Contracts (The Trust Layer)
-- **Blockchain**: Polygon (PoS) - Low fees, fast finality
+- **Blockchain**: Polygon (PoS) / Sepolia (testnet) - Low fees, fast finality
 - **Framework**: [Hardhat](https://hardhat.org) - Development environment for Ethereum
 - **Language**: Solidity 0.8.28
 - **Testing**: Hardhat with TypeScript
+- **Deployment**: Hardhat scripts with ethers.js v6
 
 ## Project Structure
 
@@ -45,7 +47,14 @@ proofsnap/
 │   ├── package.json        # Dependencies and scripts
 │   ├── tsconfig.json       # TypeScript configuration
 │   ├── bunfig.toml         # Bun environment configuration
-│   └── test-db.ts          # Supabase database test utility
+│   ├── test-db.ts          # Supabase database test utility
+│   ├── test-ipfs.ts        # IPFS upload test utility
+│   └── src/                # Source code
+│       ├── controllers/    # HTTP request handlers
+│       │   └── mintController.ts  # Media minting endpoint
+│       └── services/       # Business logic services
+│           ├── ipfsService.ts      # Pinata IPFS integration
+│           └── blockchainService.ts  # Smart contract interaction
 ├── mobile/                 # React Native + Expo
 │   ├── App.tsx             # Main React Native component
 │   ├── index.ts            # App entry point
@@ -56,6 +65,8 @@ proofsnap/
 │   ├── contracts/          # Solidity smart contracts
 │   │   ├── ProofSnap.sol   # Main contract for media provenance
 │   │   └── Lock.sol        # Sample contract (template)
+│   ├── scripts/            # Deployment scripts
+│   │   └── deploy.ts       # ProofSnap contract deployment
 │   ├── test/               # Contract tests
 │   │   ├── ProofSnap.ts    # Tests for ProofSnap contract
 │   │   └── Lock.ts         # Tests for Lock contract
@@ -85,13 +96,18 @@ bun install
 
 #### Environment Configuration
 
-Configure Supabase credentials in `backend/bunfig.toml`:
+Configure environment variables in `backend/bunfig.toml`:
 
 ```toml
 [env]
 SUPABASE_URL = "your-supabase-url"
 SUPABASE_ANON_KEY = "your-supabase-anon-key"
+PINATA_JWT = "your-pinata-jwt-token"
 ```
+
+Required services:
+- **Supabase**: For user profiles and media record indexing
+- **Pinata**: For IPFS file storage (get JWT token from [Pinata Dashboard](https://app.pinata.cloud))
 
 #### Development
 
@@ -103,12 +119,16 @@ bun run dev
 
 The server will start and watch for file changes.
 
-#### Database Testing
+#### Testing Utilities
 
 Test Supabase connection:
-
 ```bash
 bun run test-db.ts
+```
+
+Test IPFS upload:
+```bash
+bun run test-ipfs.ts
 ```
 
 #### Type Checking
@@ -147,6 +167,15 @@ cd smart-contracts
 npm install
 ```
 
+#### Environment Configuration
+
+Create a `.env` file in `smart-contracts/` directory:
+
+```env
+SEPOLIA_RPC_URL=https://sepolia.infura.io/v3/your-project-id
+SEPOLIA_PRIVATE_KEY=your-private-key
+```
+
 #### Development
 
 Compile contracts:
@@ -166,11 +195,14 @@ npx hardhat node
 
 Deploy contracts:
 ```bash
-# Deploy sample Lock contract
-npx hardhat ignition deploy ./ignition/modules/Lock.ts
+# Deploy ProofSnap contract to local Hardhat network
+npx hardhat run scripts/deploy.ts
 
-# Deploy ProofSnap contract (when deployment module is created)
-# npx hardhat ignition deploy ./ignition/modules/ProofSnap.ts
+# Deploy to Sepolia testnet
+npx hardhat run scripts/deploy.ts --network sepolia
+
+# Deploy sample Lock contract (using Ignition)
+npx hardhat ignition deploy ./ignition/modules/Lock.ts
 ```
 
 #### Contract Details
@@ -187,15 +219,50 @@ The contract matches the specification in `spec.md` and provides immutable proof
 
 ## API Endpoints
 
-### Current Endpoints
+### Implemented Endpoints
 - `GET /` - Welcome message
 - `GET /health` - Health check endpoint
-
-### Planned Endpoints (from spec)
 - `POST /api/v1/mint` - Core endpoint for minting media proofs
+  - **Request Body**: 
+    ```json
+    {
+      "imageBuffer": "base64-encoded-image",
+      "walletAddress": "0x...",
+      "locationData": "encrypted:lat,lng" (optional),
+      "deviceId": "device-identifier" (optional)
+    }
+    ```
+  - **Response**:
+    ```json
+    {
+      "status": "success",
+      "ipfsUrl": "https://ipfs.io/ipfs/...",
+      "contentHash": "0x...",
+      "txHash": "0x...",
+      "verificationUrl": "https://proofsnap.app/verify/...",
+      "mediaRecord": { ... }
+    }
+    ```
+
+### Planned Endpoints
 - `GET /api/v1/verify/:hash` - Public verification endpoint
 
 ## Architecture Overview
+
+### Backend Architecture
+
+The backend follows a modular controller-service pattern:
+
+- **Controllers** (`src/controllers/`): Handle HTTP requests, validate input, and return responses
+  - `mintController.ts`: Processes media minting requests
+
+- **Services** (`src/services/`): Contain business logic and external integrations
+  - `ipfsService.ts`: Manages Pinata IPFS uploads and URL generation
+  - `blockchainService.ts`: Handles smart contract interactions via ethers.js
+
+This separation allows for easy testing, maintenance, and future expansion of the API.
+
+### Storage Architecture
 
 The system follows a hybrid storage model:
 - **IPFS**: Stores the actual image files (decentralized)
@@ -207,13 +274,22 @@ The system follows a hybrid storage model:
   - Device ID (hashed device identifier)
 - **Supabase**: Stores user profiles and off-chain index data for fast querying
 
-### Smart Contract Flow
+### Media Minting Flow
 
-1. Mobile app captures image and generates SHA-256 hash
-2. User signs the hash with their wallet
-3. Backend uploads image to IPFS
-4. Backend calls `ProofSnap.registerMedia()` on Polygon with hash and metadata
-5. Proof is permanently stored on-chain and can be verified via `getProof()`
+The `/api/v1/mint` endpoint implements the complete provenance flow:
+
+1. **Receive Request**: Backend receives base64 image buffer and wallet address
+2. **Generate Hash**: Creates SHA-256 content hash from image pixel data
+3. **Upload to IPFS**: Uploads image to Pinata IPFS gateway, receives IPFS hash
+4. **Register on Blockchain**: Calls `ProofSnap.registerMedia()` with content hash, location, and device ID
+5. **Store in Database**: Creates/updates user record and saves media record with:
+   - IPFS hash (for image retrieval)
+   - Content hash (for verification)
+   - Transaction hash (blockchain proof)
+   - Status: VERIFIED
+6. **Return Response**: Returns IPFS URL, content hash, transaction hash, and verification URL
+
+The proof is now permanently stored on-chain and can be verified via `getProof()` on the ProofSnap contract.
 
 ## License
 
