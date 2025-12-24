@@ -26,10 +26,11 @@ A "Super Normal" camera application that establishes media provenance at the poi
 - **Language**: TypeScript
 - **Architecture**: New Architecture enabled
 - **Key Libraries**:
-  - `expo-camera`: For capturing media
-  - `expo-file-system`: For local file manipulation
-  - `ethers` (v6): For wallet creation and blockchain interaction
-  - `skia` (React Native Skia): For high-performance watermark compositing
+  - `expo-camera`: For capturing media (✅ implemented)
+  - `expo-crypto`: For SHA-256 hash generation (✅ implemented)
+  - `expo-file-system`: Available for local file manipulation
+  - `ethers` (v6): For wallet creation and blockchain interaction (⏳ TODO)
+  - `skia` (React Native Skia): For high-performance watermark compositing (⏳ TODO)
 
 ### Smart Contracts (The Trust Layer)
 - **Blockchain**: Polygon (PoS) / Sepolia (testnet) - Low fees, fast finality
@@ -60,7 +61,10 @@ proofsnap/
 │   ├── index.ts            # App entry point
 │   ├── app.json            # Expo configuration
 │   ├── package.json        # Dependencies and scripts
-│   └── tsconfig.json       # TypeScript configuration
+│   ├── tsconfig.json       # TypeScript configuration
+│   └── src/                # Source code
+│       └── screens/        # Screen components
+│           └── CameraScreen.tsx  # Camera capture screen
 ├── smart-contracts/        # Hardhat project
 │   ├── contracts/          # Solidity smart contracts
 │   │   ├── ProofSnap.sol   # Main contract for media provenance
@@ -159,6 +163,25 @@ bun run android  # Android emulator/device
 bun run ios      # iOS simulator/device
 bun run web      # Web browser
 ```
+
+#### Current Implementation
+
+The mobile app currently includes:
+
+- **CameraScreen** (`src/screens/CameraScreen.tsx`): 
+  - ✅ Camera capture with `expo-camera` (CameraView)
+  - ✅ Base64 image encoding (via `takePictureAsync` with `base64: true`)
+  - ✅ SHA-256 hash generation using `expo-crypto`
+  - ✅ Photo preview with hash display
+  - ✅ Permission handling with `useCameraPermissions` hook
+  - ⏳ Wallet service integration (TODO)
+  - ⏳ API service for minting (TODO)
+  - ⏳ Secure button functionality (TODO)
+
+The camera screen follows Expo best practices:
+- Uses `CameraView` without children (overlay positioned absolutely)
+- Uses modern Expo Camera API (avoids deprecated FileSystem methods)
+- Proper TypeScript typing throughout
 
 ### Smart Contracts Setup
 
@@ -290,6 +313,45 @@ The `/api/v1/mint` endpoint implements the complete provenance flow:
 6. **Return Response**: Returns IPFS URL, content hash, transaction hash, and verification URL
 
 The proof is now permanently stored on-chain and can be verified via `getProof()` on the ProofSnap contract.
+
+## Implementation Status
+
+### ✅ Completed
+
+**Backend:**
+- Bun + Hono API server setup
+- Supabase database integration
+- IPFS upload service (Pinata)
+- Blockchain service (ethers.js v6)
+- `/api/v1/mint` endpoint fully functional
+- Media minting flow (IPFS → Blockchain → Database)
+
+**Smart Contracts:**
+- ProofSnap contract deployed and tested
+- Media provenance system (content hash, timestamp, creator, location, device ID)
+- Contract tests passing
+
+**Mobile:**
+- Expo project setup with TypeScript
+- CameraScreen component implemented
+- Camera capture with base64 encoding
+- SHA-256 hash generation
+- Photo preview UI
+- Camera permissions handling
+- Expo Camera plugin configured
+
+### ⏳ In Progress / TODO
+
+**Mobile:**
+- Wallet service (create/manage wallet with ethers v6)
+- API service (integrate with `/api/v1/mint` endpoint)
+- Secure button functionality (connect to minting flow)
+- Location services integration
+- Device ID generation
+- Watermark compositing (React Native Skia)
+
+**Backend:**
+- Public verification endpoint (`GET /api/v1/verify/:hash`)
 
 ## License
 
