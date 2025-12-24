@@ -1,0 +1,196 @@
+import React, { useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as Crypto from 'expo-crypto';
+
+// Define captured photo state type
+interface CapturedPhoto {
+    uri: string;
+    base64: string;
+    hash: string;
+}
+
+export default function CameraScreen() {
+    const cameraRef = useRef<CameraView>(null);
+    const [permission, requestPermission] = useCameraPermissions();
+    const [capturedPhoto, setCapturedPhoto] = useState<CapturedPhoto | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Request camera permission
+    if (!permission) {
+        return <View />;
+    }
+
+    if (!permission.granted) {
+        return (
+            <View style={styles.container}>
+                <Text style={styles.text}>We need your permission to use the camera</Text>
+                <TouchableOpacity style={styles.button} onPress={requestPermission}>
+                    <Text style={styles.buttonText}>Grant Permission</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    const takePicture = async () => {
+        if (!cameraRef.current) return;
+
+        try {
+            setIsLoading(true);
+
+            // Capture photo with base64 included
+            const photo = await cameraRef.current.takePictureAsync({
+                quality: 0.8,
+                base64: true,
+            });
+
+            if (!photo || !photo.uri) {
+                throw new Error('Failed to capture photo');
+            }
+
+            if (!photo.base64) {
+                throw new Error('Failed to get base64 data from photo');
+            }
+
+            const fileUri = photo.uri;
+            const fileDataBase64 = photo.base64;
+
+            // Generate SHA-256 hash from base64 string
+            const contentHash = await Crypto.digestStringAsync(
+                Crypto.CryptoDigestAlgorithm.SHA256,
+                fileDataBase64
+            );
+
+            console.log('📸 Photo captured!');
+            console.log('URI:', fileUri);
+            console.log('Hash:', contentHash);
+            console.log('Base64 length:', fileDataBase64.length);
+
+            // Store for later use - properly typed
+            setCapturedPhoto({
+                uri: fileUri,
+                base64: fileDataBase64,
+                hash: contentHash,
+            });
+
+            setIsLoading(false);
+        } catch (error) {
+            console.error('❌ Camera error:', error);
+            setIsLoading(false);
+            alert('Failed to capture photo: ' + (error as Error).message);
+        }
+    };
+
+    // If photo captured, show preview
+    if (capturedPhoto) {
+        return (
+            <View style={styles.container}>
+                <Image source={{ uri: capturedPhoto.uri }} style={styles.preview} />
+                <Text style={styles.hashText}>
+                    Hash: {capturedPhoto.hash.substring(0, 40)}...
+                </Text>
+
+                <View style={styles.buttonRow}>
+                    <TouchableOpacity
+                        style={[styles.button, styles.retakeBtn]}
+                        onPress={() => setCapturedPhoto(null)}
+                    >
+                        <Text style={styles.buttonText}>↻ Retake</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={[styles.button, styles.uploadBtn]}>
+                        <Text style={styles.buttonText}>🔐 Secure</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    }
+
+    // Camera view - button overlay positioned absolutely (CameraView doesn't support children)
+    return (
+        <View style={styles.container}>
+            <CameraView style={styles.camera} ref={cameraRef} facing="back" />
+            <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                    style={[styles.button, styles.captureBtn]}
+                    onPress={takePicture}
+                    disabled={isLoading}
+                >
+                    <Text style={styles.buttonText}>
+                        {isLoading ? '📷 Processing...' : '📷 Capture'}
+                    </Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        backgroundColor: '#000',
+    },
+    camera: {
+        flex: 1,
+    },
+    buttonContainer: {
+        position: 'absolute',
+        bottom: 64,
+        left: 0,
+        right: 0,
+        flexDirection: 'row',
+        backgroundColor: 'transparent',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    button: {
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 50,
+        backgroundColor: '#007AFF',
+        marginHorizontal: 10,
+    },
+    captureBtn: {
+        backgroundColor: '#FF6B35',
+        paddingHorizontal: 30,
+        paddingVertical: 15,
+    },
+    retakeBtn: {
+        backgroundColor: '#888',
+    },
+    uploadBtn: {
+        backgroundColor: '#00C853',
+    },
+    buttonText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#fff',
+        textAlign: 'center',
+    },
+    text: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: 'white',
+        textAlign: 'center',
+        marginBottom: 20,
+    },
+    preview: {
+        flex: 1,
+        width: '100%',
+    },
+    hashText: {
+        color: '#fff',
+        padding: 10,
+        backgroundColor: '#333',
+        fontSize: 12,
+        fontFamily: 'monospace',
+        textAlign: 'center',
+    },
+    buttonRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        paddingVertical: 20,
+        backgroundColor: '#111',
+    },
+});
