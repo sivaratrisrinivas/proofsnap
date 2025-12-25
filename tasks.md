@@ -111,9 +111,10 @@
     - **Test:** Taken photos now appear in the gallery with the visible "Truth Sigil."
     - **Note:** Using expo-image-manipulator for image processing. Visual watermark can be enhanced later.
 
-- [ ] **Step 20: Gallery View**
+- [x] **Step 20: Gallery View**
     - **Task:** Create a simple screen to view the list of photos taken within the app.
     - **Test:** User can scroll through their history of "Trusted" photos.
+    - **Note:** Implemented with AsyncStorage persistence, tab navigation, share/delete actions.
 
 - [x] **Step 21: Verification Link Generation**
     - **Task:** When the user shares the photo, attach a text caption or metadata containing the URL `https://truthlens.app/verify/[hash]`.

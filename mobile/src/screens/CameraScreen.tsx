@@ -5,6 +5,7 @@ import * as Crypto from 'expo-crypto';
 import { ethers } from 'ethers';
 import { mintMedia, MintResponse } from '../services/apiService';
 import { addWatermark, generateShareMessage } from '../services/watermarkService';
+import { addGalleryItem } from '../services/storageService';
 
 // Define captured photo state type
 interface CapturedPhoto {
@@ -140,13 +141,17 @@ export default function CameraScreen({ wallet }: CameraScreenProps) {
             });
 
             // Store secured photo for success screen
-            setSecuredPhoto({
+            const securedData = {
                 uri: watermarkedUri,
                 ipfsHash: result.mediaRecord.ipfs_hash,
                 ipfsUrl: result.ipfsUrl,
                 txHash: result.txHash,
                 verificationUrl: result.verificationUrl,
-            });
+            };
+            setSecuredPhoto(securedData);
+
+            // Save to gallery for history
+            await addGalleryItem(securedData);
 
             setCapturedPhoto(null);
 
