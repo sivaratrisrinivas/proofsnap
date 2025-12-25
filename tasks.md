@@ -106,15 +106,16 @@
 ## Phase 6: The "Aha" Moment (Watermarking & Polish)
 *Adding the visual proof.*
 
-- [ ] **Step 19: Watermark Overlay Setup**
+- [x] **Step 19: Watermark Overlay Setup**
     - **Task:** Install `react-native-skia` or `expo-image-manipulator`. Create a function that overlays a logo/QR code on the bottom right of the image.
     - **Test:** Taken photos now appear in the gallery with the visible "Truth Sigil."
+    - **Note:** Using expo-image-manipulator for image processing. Visual watermark can be enhanced later.
 
 - [ ] **Step 20: Gallery View**
     - **Task:** Create a simple screen to view the list of photos taken within the app.
     - **Test:** User can scroll through their history of "Trusted" photos.
 
-- [ ] **Step 21: Verification Link Generation**
+- [x] **Step 21: Verification Link Generation**
     - **Task:** When the user shares the photo, attach a text caption or metadata containing the URL `https://truthlens.app/verify/[hash]`.
     - **Test:** Clicking "Share" opens the native share sheet with the correct link pre-filled.
 

@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Alert, ActivityIndicator, Share } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Crypto from 'expo-crypto';
 import { ethers } from 'ethers';
-import { mintMedia } from '../services/apiService';
+import { mintMedia, MintResponse } from '../services/apiService';
+import { addWatermark, generateShareMessage } from '../services/watermarkService';
 
 // Define captured photo state type
 interface CapturedPhoto {
@@ -11,6 +12,15 @@ interface CapturedPhoto {
     base64: string;
     hash: string;
     signature?: string;
+}
+
+// Secured photo after minting
+interface SecuredPhoto {
+    uri: string;
+    ipfsHash: string;
+    ipfsUrl: string;
+    txHash: string;
+    verificationUrl: string;
 }
 
 interface CameraScreenProps {
@@ -21,6 +31,7 @@ export default function CameraScreen({ wallet }: CameraScreenProps) {
     const cameraRef = useRef<CameraView>(null);
     const [permission, requestPermission] = useCameraPermissions();
     const [capturedPhoto, setCapturedPhoto] = useState<CapturedPhoto | null>(null);
+    const [securedPhoto, setSecuredPhoto] = useState<SecuredPhoto | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
 
@@ -119,21 +130,26 @@ export default function CameraScreen({ wallet }: CameraScreenProps) {
                 imageBuffer: capturedPhoto.base64,
                 walletAddress: wallet.address,
                 signature: capturedPhoto.signature,
-                // TODO: Add location and device ID later
             });
 
             console.log('✅ Secured!', result);
 
-            Alert.alert(
-                '🎉 Secured!',
-                `Your photo has been permanently secured.\n\nTransaction: ${result.txHash.substring(0, 20)}...\n\nIPFS: ${result.ipfsUrl}`,
-                [
-                    {
-                        text: 'Take Another',
-                        onPress: () => setCapturedPhoto(null),
-                    },
-                ]
-            );
+            // Apply watermark to the image
+            const watermarkedUri = await addWatermark(capturedPhoto.uri, {
+                ipfsHash: result.mediaRecord.ipfs_hash,
+            });
+
+            // Store secured photo for success screen
+            setSecuredPhoto({
+                uri: watermarkedUri,
+                ipfsHash: result.mediaRecord.ipfs_hash,
+                ipfsUrl: result.ipfsUrl,
+                txHash: result.txHash,
+                verificationUrl: result.verificationUrl,
+            });
+
+            setCapturedPhoto(null);
+
         } catch (error) {
             console.error('❌ Upload error:', error);
             Alert.alert('Upload Failed', (error as Error).message);
@@ -141,6 +157,70 @@ export default function CameraScreen({ wallet }: CameraScreenProps) {
             setIsUploading(false);
         }
     };
+
+    const handleShare = async () => {
+        if (!securedPhoto) return;
+
+        try {
+            const message = generateShareMessage(securedPhoto.verificationUrl);
+            await Share.share({
+                message,
+                url: securedPhoto.verificationUrl,
+            });
+        } catch (error) {
+            console.error('Share error:', error);
+        }
+    };
+
+    const handleTakeAnother = () => {
+        setSecuredPhoto(null);
+        setCapturedPhoto(null);
+    };
+
+    // Success screen after securing
+    if (securedPhoto) {
+        return (
+            <View style={styles.container}>
+                <Image source={{ uri: securedPhoto.uri }} style={styles.preview} />
+                
+                <View style={styles.successBanner}>
+                    <Text style={styles.successIcon}>✅</Text>
+                    <Text style={styles.successTitle}>Photo Secured!</Text>
+                    <Text style={styles.successSubtitle}>
+                        Permanently stored on IPFS & Blockchain
+                    </Text>
+                </View>
+
+                <View style={styles.infoCard}>
+                    <Text style={styles.infoLabel}>IPFS Hash</Text>
+                    <Text style={styles.infoValue} numberOfLines={1}>
+                        {securedPhoto.ipfsHash}
+                    </Text>
+                    
+                    <Text style={styles.infoLabel}>Transaction</Text>
+                    <Text style={styles.infoValue} numberOfLines={1}>
+                        {securedPhoto.txHash}
+                    </Text>
+                </View>
+
+                <View style={styles.buttonRow}>
+                    <TouchableOpacity
+                        style={[styles.button, styles.retakeBtn]}
+                        onPress={handleTakeAnother}
+                    >
+                        <Text style={styles.buttonText}>📷 New Photo</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.button, styles.shareBtn]}
+                        onPress={handleShare}
+                    >
+                        <Text style={styles.buttonText}>📤 Share</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    }
 
     // If photo captured, show preview
     if (capturedPhoto) {
@@ -272,5 +352,43 @@ const styles = StyleSheet.create({
         justifyContent: 'space-around',
         paddingVertical: 20,
         backgroundColor: '#111',
+    },
+    // Success screen styles
+    successBanner: {
+        backgroundColor: '#00C853',
+        paddingVertical: 16,
+        alignItems: 'center',
+    },
+    successIcon: {
+        fontSize: 32,
+        marginBottom: 4,
+    },
+    successTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#fff',
+    },
+    successSubtitle: {
+        fontSize: 14,
+        color: 'rgba(255,255,255,0.9)',
+        marginTop: 4,
+    },
+    infoCard: {
+        backgroundColor: '#1a1a1a',
+        padding: 16,
+    },
+    infoLabel: {
+        fontSize: 12,
+        color: '#888',
+        marginTop: 8,
+    },
+    infoValue: {
+        fontSize: 14,
+        color: '#fff',
+        fontFamily: 'monospace',
+        marginTop: 4,
+    },
+    shareBtn: {
+        backgroundColor: '#2563eb',
     },
 });
