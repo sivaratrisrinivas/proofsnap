@@ -63,7 +63,7 @@
     - **Task:** Create the POST `/api/mint` route in Hono. It should parse the body, upload to IPFS (Step 8), write to Blockchain (Step 9), and save to DB (Step 10).
     - **Test:** Use `curl` or Postman to send a dummy JSON object to the endpoint and receive a success response with a Transaction Hash.
 
-- [ ] **Step 12: Implement API: Verify Endpoint**
+- [x] **Step 12: Implement API: Verify Endpoint**
     - **Task:** Create GET `/api/verify/:hash`. It should query the Supabase DB (or Blockchain) and return the media details.
     - **Test:** Request the hash generated in Step 11 and receive the JSON metadata.
 
