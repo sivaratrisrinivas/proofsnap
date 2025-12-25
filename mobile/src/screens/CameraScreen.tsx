@@ -1,8 +1,9 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Alert, ActivityIndicator } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Crypto from 'expo-crypto';
 import { ethers } from 'ethers';
+import { mintMedia } from '../services/apiService';
 
 // Define captured photo state type
 interface CapturedPhoto {
@@ -21,6 +22,7 @@ export default function CameraScreen({ wallet }: CameraScreenProps) {
     const [permission, requestPermission] = useCameraPermissions();
     const [capturedPhoto, setCapturedPhoto] = useState<CapturedPhoto | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
 
     // Request camera permission
     if (!permission) {
@@ -103,6 +105,43 @@ export default function CameraScreen({ wallet }: CameraScreenProps) {
         }
     };
 
+    const handleSecure = async () => {
+        if (!capturedPhoto || !wallet) {
+            Alert.alert('Error', 'No photo or wallet available');
+            return;
+        }
+
+        try {
+            setIsUploading(true);
+            console.log('🚀 Uploading to backend...');
+
+            const result = await mintMedia({
+                imageBuffer: capturedPhoto.base64,
+                walletAddress: wallet.address,
+                signature: capturedPhoto.signature,
+                // TODO: Add location and device ID later
+            });
+
+            console.log('✅ Secured!', result);
+
+            Alert.alert(
+                '🎉 Secured!',
+                `Your photo has been permanently secured.\n\nTransaction: ${result.txHash.substring(0, 20)}...\n\nIPFS: ${result.ipfsUrl}`,
+                [
+                    {
+                        text: 'Take Another',
+                        onPress: () => setCapturedPhoto(null),
+                    },
+                ]
+            );
+        } catch (error) {
+            console.error('❌ Upload error:', error);
+            Alert.alert('Upload Failed', (error as Error).message);
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     // If photo captured, show preview
     if (capturedPhoto) {
         return (
@@ -116,12 +155,24 @@ export default function CameraScreen({ wallet }: CameraScreenProps) {
                     <TouchableOpacity
                         style={[styles.button, styles.retakeBtn]}
                         onPress={() => setCapturedPhoto(null)}
+                        disabled={isUploading}
                     >
                         <Text style={styles.buttonText}>↻ Retake</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={[styles.button, styles.uploadBtn]}>
-                        <Text style={styles.buttonText}>🔐 Secure</Text>
+                    <TouchableOpacity
+                        style={[styles.button, styles.uploadBtn, isUploading && styles.disabledBtn]}
+                        onPress={handleSecure}
+                        disabled={isUploading || !wallet}
+                    >
+                        {isUploading ? (
+                            <View style={styles.uploadingRow}>
+                                <ActivityIndicator size="small" color="#fff" />
+                                <Text style={styles.buttonText}> Uploading...</Text>
+                            </View>
+                        ) : (
+                            <Text style={styles.buttonText}>🔐 Secure</Text>
+                        )}
                     </TouchableOpacity>
                 </View>
             </View>
@@ -183,6 +234,13 @@ const styles = StyleSheet.create({
     },
     uploadBtn: {
         backgroundColor: '#00C853',
+    },
+    disabledBtn: {
+        opacity: 0.6,
+    },
+    uploadingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     buttonText: {
         fontSize: 18,

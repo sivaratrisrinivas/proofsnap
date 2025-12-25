@@ -177,8 +177,8 @@ The mobile app currently includes:
   - ✅ Permission handling with `useCameraPermissions` hook
   - ✅ Wallet integration via `useWallet` hook
   - ✅ Cryptographic signing of image hash with wallet
-  - ⏳ API service for minting (TODO)
-  - ⏳ Secure button functionality (TODO)
+  - ✅ API service for minting (complete)
+  - ✅ Secure button functionality (uploads to IPFS + blockchain)
 
 The camera screen follows Expo best practices:
 - Uses `CameraView` without children (overlay positioned absolutely)
@@ -345,15 +345,17 @@ The proof is now permanently stored on-chain and can be verified via `getProof()
 - Secure wallet key storage with expo-secure-store
 - Cryptographic image hash signing with ethers.js
 - Wallet UI overlay in HomeScreen
+- API service for minting photos
+- Full upload integration (IPFS + Blockchain + Database)
 
 ### ⏳ In Progress / TODO
 
 **Mobile:**
-- API service (integrate with `/api/v1/mint` endpoint)
-- Secure button functionality (connect to minting flow)
 - Location services integration
 - Device ID generation
 - Watermark compositing (React Native Skia)
+- Gallery view for secured photos
+- Share functionality with verification link
 
 **Backend:**
 - Public verification endpoint (`GET /api/v1/verify/:hash`)

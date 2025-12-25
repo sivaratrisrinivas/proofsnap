@@ -12,4 +12,9 @@ app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOStri
 // NEW: Mint endpoint
 app.post('/api/v1/mint', mintMedia)
 
-export default app
+// Export with explicit host binding for network access
+export default {
+  port: 3000,
+  hostname: '0.0.0.0', // Allow connections from any IP (required for mobile device access)
+  fetch: app.fetch,
+}

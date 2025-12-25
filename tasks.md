@@ -97,7 +97,7 @@
     - **Task:** When a photo is taken, use the Wallet (Step 16) to cryptographically sign the Image Hash (Step 15).
     - **Test:** Console logs the `signature` string alongside the hash.
 
-- [ ] **Step 18: Upload Integration**
+- [x] **Step 18: Upload Integration**
     - **Task:** Implement the network request to POST the image file + signature to your Backend `/mint` endpoint.
     - **Test:** Take a photo -> App shows "Uploading..." -> Backend receives it -> App alerts "Secured!".
 
