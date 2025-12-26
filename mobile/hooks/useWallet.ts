@@ -3,19 +3,6 @@ import * as SecureStore from 'expo-secure-store';
 import * as Crypto from 'expo-crypto';
 import { ethers } from 'ethers';
 
-// Polyfill crypto.getRandomValues for ethers.js in React Native
-if (typeof global.crypto === 'undefined') {
-  (global as any).crypto = {};
-}
-if (typeof global.crypto.getRandomValues === 'undefined') {
-  (global as any).crypto.getRandomValues = (array: Uint8Array) => {
-    for (let i = 0; i < array.length; i++) {
-      array[i] = Math.floor(Math.random() * 256);
-    }
-    return array;
-  };
-}
-
 export const useWallet = () => {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [wallet, setWallet] = useState<ethers.HDNodeWallet | ethers.Wallet | null>(null);
