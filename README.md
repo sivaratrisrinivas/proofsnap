@@ -253,6 +253,7 @@ The contract matches the specification in `spec.md` and provides immutable proof
     {
       "imageBuffer": "base64-encoded-image",
       "walletAddress": "0x...",
+      "signature": "0x..." (optional, but recommended for verification),
       "locationData": "encrypted:lat,lng" (optional),
       "deviceId": "device-identifier" (optional)
     }
@@ -262,15 +263,28 @@ The contract matches the specification in `spec.md` and provides immutable proof
     {
       "status": "success",
       "ipfsUrl": "https://ipfs.io/ipfs/...",
+      "ipfsHash": "...",
       "contentHash": "0x...",
       "txHash": "0x...",
-      "verificationUrl": "https://proofsnap.app/verify/...",
+      "verificationUrl": "https://proofsnap.app/api/v1/verify/...",
       "mediaRecord": { ... }
     }
     ```
-
-### Planned Endpoints
 - `GET /api/v1/verify/:hash` - Public verification endpoint
+  - **Response**:
+    ```json
+    {
+      "verified": true,
+      "ipfsHash": "...",
+      "contentHash": "0x...",
+      "blockchainProof": {
+        "timestamp": "...",
+        "creator": "0x...",
+        "txHash": "0x..."
+      },
+      "mediaRecord": { ... }
+    }
+    ```
 
 ## Architecture Overview
 
@@ -303,16 +317,17 @@ The system follows a hybrid storage model:
 
 The `/api/v1/mint` endpoint implements the complete provenance flow:
 
-1. **Receive Request**: Backend receives base64 image buffer and wallet address
-2. **Generate Hash**: Creates SHA-256 content hash from image pixel data
-3. **Upload to IPFS**: Uploads image to Pinata IPFS gateway, receives IPFS hash
-4. **Register on Blockchain**: Calls `ProofSnap.registerMedia()` with content hash, location, and device ID
-5. **Store in Database**: Creates/updates user record and saves media record with:
+1. **Receive Request**: Backend receives base64 image buffer, wallet address, and cryptographic signature
+2. **Verify Signature**: Validates the signature against the wallet address and content hash (ensures authenticity)
+3. **Generate Hash**: Creates SHA-256 content hash from base64 string (matches mobile hashing method)
+4. **Upload to IPFS**: Uploads decoded image buffer to Pinata IPFS gateway, receives IPFS hash
+5. **Register on Blockchain**: Calls `ProofSnap.registerMedia()` with content hash, location, and device ID
+6. **Store in Database**: Creates/updates user record and saves media record with:
    - IPFS hash (for image retrieval)
    - Content hash (for verification)
    - Transaction hash (blockchain proof)
    - Status: VERIFIED
-6. **Return Response**: Returns IPFS URL, content hash, transaction hash, and verification URL
+7. **Return Response**: Returns IPFS URL, content hash, transaction hash, and verification URL
 
 The proof is now permanently stored on-chain and can be verified via `getProof()` on the ProofSnap contract.
 
@@ -326,6 +341,8 @@ The proof is now permanently stored on-chain and can be verified via `getProof()
 - IPFS upload service (Pinata)
 - Blockchain service (ethers.js v6)
 - `/api/v1/mint` endpoint fully functional
+- `/api/v1/verify/:hash` endpoint for public verification
+- Cryptographic signature verification (ethers.js `verifyMessage`)
 - Media minting flow (IPFS → Blockchain → Database)
 
 **Smart Contracts:**
@@ -347,18 +364,19 @@ The proof is now permanently stored on-chain and can be verified via `getProof()
 - Wallet UI overlay in HomeScreen
 - API service for minting photos
 - Full upload integration (IPFS + Blockchain + Database)
+- Gallery view with AsyncStorage persistence
+- Native share functionality with verification links
+- Success screen with transaction details
 
 ### ⏳ In Progress / TODO
 
 **Mobile:**
 - Location services integration
 - Device ID generation
-- Watermark compositing (React Native Skia)
-- Gallery view for secured photos
-- Share functionality with verification link
+- Enhanced watermark compositing (React Native Skia for high-performance rendering)
 
 **Backend:**
-- Public verification endpoint (`GET /api/v1/verify/:hash`)
+- Production deployment configuration
 
 ## License
 

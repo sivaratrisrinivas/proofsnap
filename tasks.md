@@ -100,6 +100,7 @@
 - [x] **Step 18: Upload Integration**
     - **Task:** Implement the network request to POST the image file + signature to your Backend `/mint` endpoint.
     - **Test:** Take a photo -> App shows "Uploading..." -> Backend receives it -> App alerts "Secured!".
+    - **Note:** Fixed signature verification - backend now hashes base64 string (matching mobile) instead of decoded buffer. Signature verification working end-to-end.
 
 ---
 
