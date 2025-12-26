@@ -6,7 +6,7 @@
 // e.g., "http://192.168.1.100:3000"
 // 
 // TODO: Replace with your machine's IP address for physical device testing
-const API_BASE_URL = 'https://4be3d2da1d06.ngrok-free.app'; // ngrok tunnel to backend
+const API_BASE_URL = 'https://094b9beb8fa4.ngrok-free.app'; // ngrok tunnel to backend
 
 export interface MintRequest {
   imageBuffer: string;      // base64 encoded image
@@ -39,7 +39,7 @@ export interface ApiError {
 export async function mintMedia(request: MintRequest): Promise<MintResponse> {
   console.log('[API] Minting media...');
   console.log('[API] URL:', `${API_BASE_URL}/api/v1/mint`);
-  
+
   const response = await fetch(`${API_BASE_URL}/api/v1/mint`, {
     method: 'POST',
     headers: {
