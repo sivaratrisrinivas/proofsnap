@@ -75,24 +75,21 @@ export default function CameraScreen({ wallet }: CameraScreenProps) {
             const fileUri = photo.uri;
             const fileDataBase64 = photo.base64;
 
-            // Generate SHA-256 hash from base64 string
-            const contentHash = await Crypto.digestStringAsync(
-                Crypto.CryptoDigestAlgorithm.SHA256,
-                fileDataBase64
-            );
+            // Hash raw image bytes (decode base64 first, then SHA256)
+            // This must match backend: crypto.createHash('sha256').update(Buffer.from(base64, 'base64'))
+            const rawBytes = ethers.decodeBase64(fileDataBase64);
+            const contentHash = ethers.sha256(rawBytes); // Returns 0x-prefixed hash
 
             console.log('📸 Photo captured!');
             console.log('URI:', fileUri);
             console.log('Hash:', contentHash);
             console.log('Base64 length:', fileDataBase64.length);
 
-            // Sign the hash with the wallet (Step 17)
+            // Sign the hash with the wallet (contentHash is already 0x-prefixed)
             let signature: string | undefined;
             if (wallet) {
                 try {
-                    // Sign the hash (prefixed with 0x for proper bytes32 format)
-                    const hashToSign = '0x' + contentHash;
-                    signature = await wallet.signMessage(hashToSign);
+                    signature = await wallet.signMessage(contentHash);
                     console.log('✍️ Signature:', signature);
                 } catch (signError) {
                     console.error('❌ Signing error:', signError);
@@ -187,7 +184,7 @@ export default function CameraScreen({ wallet }: CameraScreenProps) {
         return (
             <View style={styles.container}>
                 <Image source={{ uri: securedPhoto.uri }} style={styles.preview} />
-                
+
                 <View style={styles.successBanner}>
                     <Text style={styles.successIcon}>✅</Text>
                     <Text style={styles.successTitle}>Photo Secured!</Text>
@@ -201,7 +198,7 @@ export default function CameraScreen({ wallet }: CameraScreenProps) {
                     <Text style={styles.infoValue} numberOfLines={1}>
                         {securedPhoto.ipfsHash}
                     </Text>
-                    
+
                     <Text style={styles.infoLabel}>Transaction</Text>
                     <Text style={styles.infoValue} numberOfLines={1}>
                         {securedPhoto.txHash}

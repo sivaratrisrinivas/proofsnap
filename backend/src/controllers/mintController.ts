@@ -61,15 +61,15 @@ export async function mintMedia(c: Context) {
       );
     }
 
-    // Convert base64 to Buffer for IPFS upload
+    // Convert base64 to Buffer for IPFS upload and hashing
     const buffer = Buffer.from(imageBuffer, "base64");
 
-    // Generate content hash (SHA-256) from base64 STRING - must match mobile hashing
-    // Mobile uses: Crypto.digestStringAsync(SHA256, base64String)
-    // So we hash the base64 string, not the decoded buffer
+    // Generate content hash (SHA-256) from RAW IMAGE BYTES
+    // Mobile uses: ethers.sha256(ethers.decodeBase64(base64String))
+    // Both sides hash the decoded raw bytes, not the base64 string
     const contentHash = "0x" + crypto
       .createHash("sha256")
-      .update(imageBuffer, "utf8")  // Hash the base64 string, not buffer
+      .update(buffer)  // Hash raw bytes (decoded from base64)
       .digest("hex");
 
     console.log(`📤 Minting media with hash: ${contentHash}`);
