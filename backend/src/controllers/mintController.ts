@@ -4,9 +4,15 @@ import { registerMediaOnChain } from "../services/blockchainService";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 
+// Base URL for verification links - set via env or defaults to ngrok URL
+// Update this when deploying to production
+const VERIFY_BASE_URL = process.env.API_BASE_URL || "https://4be3d2da1d06.ngrok-free.app";
+console.log(`[Config] VERIFY_BASE_URL: ${VERIFY_BASE_URL}`);
+
+// Use service_role key to bypass RLS for backend operations
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY!
 );
 
 export async function mintMedia(c: Context) {
@@ -62,7 +68,7 @@ export async function mintMedia(c: Context) {
     }
 
     // Step 4: Save to Supabase
-    const { data: mediaRecord } = await supabase
+    const { data: mediaRecord, error: dbError } = await supabase
       .from("media_records")
       .insert({
         user_id: userId,
@@ -74,13 +80,17 @@ export async function mintMedia(c: Context) {
       .select()
       .single();
 
-    console.log(`✅ Saved to DB: ${mediaRecord?.id}`);
+    if (dbError) {
+      console.error(`⚠️ DB insert error:`, dbError);
+    }
+    console.log(`✅ Saved to DB: ${mediaRecord?.id || 'failed'}`);
 
-    const verificationUrl = `https://proofsnap.app/verify/${ipfsHash}`;
+    const verificationUrl = `${VERIFY_BASE_URL}/api/v1/verify/${ipfsHash}`;
 
     return c.json({
       status: "success",
       ipfsUrl: getIpfsUrl(ipfsHash),
+      ipfsHash, // Include directly for reliability
       contentHash,
       txHash,
       verificationUrl,

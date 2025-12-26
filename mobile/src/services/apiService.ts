@@ -19,16 +19,17 @@ export interface MintRequest {
 export interface MintResponse {
   status: string;
   ipfsUrl: string;
+  ipfsHash: string;  // Direct access, more reliable
   contentHash: string;
   txHash: string;
   verificationUrl: string;
-  mediaRecord: {
+  mediaRecord?: {    // Optional - may be null if DB fails
     id: string;
     ipfs_hash: string;
     content_hash: string;
     tx_hash: string;
     status: string;
-  };
+  } | null;
 }
 
 export interface ApiError {

@@ -3,9 +3,10 @@ import { createClient } from "@supabase/supabase-js";
 import { getProofFromChain } from "../services/blockchainService";
 import { getIpfsUrl } from "../services/ipfsService";
 
+// Use service_role key to bypass RLS for backend operations
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY!
 );
 
 export async function verifyMedia(c: Context) {

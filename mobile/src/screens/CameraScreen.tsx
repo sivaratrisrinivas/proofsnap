@@ -137,13 +137,13 @@ export default function CameraScreen({ wallet }: CameraScreenProps) {
 
             // Apply watermark to the image
             const watermarkedUri = await addWatermark(capturedPhoto.uri, {
-                ipfsHash: result.mediaRecord.ipfs_hash,
+                ipfsHash: result.ipfsHash,
             });
 
             // Store secured photo for success screen
             const securedData = {
                 uri: watermarkedUri,
-                ipfsHash: result.mediaRecord.ipfs_hash,
+                ipfsHash: result.ipfsHash,
                 ipfsUrl: result.ipfsUrl,
                 txHash: result.txHash,
                 verificationUrl: result.verificationUrl,

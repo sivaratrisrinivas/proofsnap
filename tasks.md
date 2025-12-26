@@ -119,6 +119,12 @@
 - [x] **Step 21: Verification Link Generation**
     - **Task:** When the user shares the photo, attach a text caption or metadata containing the URL `https://truthlens.app/verify/[hash]`.
     - **Test:** Clicking "Share" opens the native share sheet with the correct link pre-filled.
+    - **Note:** Using configurable API_BASE_URL for verification links. Currently uses ngrok for dev.
+
+---
+
+## ✅ Phase 6 Complete! 
+All core features working end-to-end: Capture → Hash → Sign → IPFS → Blockchain → DB → Verify → Share
 
 ---
 
