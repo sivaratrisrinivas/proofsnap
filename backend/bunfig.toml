@@ -2,10 +2,16 @@
 # This file only contains non-sensitive Bun configuration
 # 
 # IMPORTANT: All secrets should be in backend/.env (not committed to git)
+#
 # Required env vars in .env:
-#   - SUPABASE_URL
-#   - SUPABASE_ANON_KEY
-#   - SUPABASE_SERVICE_KEY
-#   - API_BASE_URL
-#   - PINATA_JWT
-#   - PRIVATE_KEY (for blockchain transactions)
+#   - SUPABASE_URL          : Supabase project URL
+#   - SUPABASE_ANON_KEY     : Supabase anonymous key
+#   - SUPABASE_SERVICE_KEY  : Supabase service role key (bypasses RLS)
+#   - API_BASE_URL          : Public URL for verification links (ngrok for dev)
+#   - PINATA_JWT            : Pinata API token for IPFS uploads
+#
+# Blockchain config:
+#   - BLOCKCHAIN_NETWORK    : local | sepolia | amoy | polygon
+#   - RPC_URL               : JSON-RPC endpoint URL
+#   - CONTRACT_ADDRESS      : Deployed ProofSnap contract address
+#   - PRIVATE_KEY           : Wallet private key (only for non-local networks)

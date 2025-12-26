@@ -101,28 +101,61 @@ bun install
 
 #### Environment Configuration
 
-Configure environment variables in `backend/bunfig.toml`:
+Create `backend/.env` with your credentials (never commit this file):
 
-```toml
-[env]
-SUPABASE_URL = "your-supabase-url"
-SUPABASE_ANON_KEY = "your-supabase-anon-key"
-PINATA_JWT = "your-pinata-jwt-token"
+```bash
+# Supabase Configuration
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_KEY=your-service-role-key
+
+# API URL (for verification links)
+# For dev: your ngrok URL. For prod: your domain
+API_BASE_URL=https://your-subdomain.ngrok-free.app
+
+# IPFS/Pinata
+PINATA_JWT=your-pinata-jwt-token
+
+# Blockchain Configuration
+BLOCKCHAIN_NETWORK=local  # local | sepolia | amoy | polygon
+RPC_URL=http://127.0.0.1:8545
+CONTRACT_ADDRESS=0x5FbDB2315678afecb367f032d93F642f64180aa3
+# PRIVATE_KEY=only-needed-for-non-local-networks
 ```
 
 Required services:
 - **Supabase**: For user profiles and media record indexing
 - **Pinata**: For IPFS file storage (get JWT token from [Pinata Dashboard](https://app.pinata.cloud))
 
-#### Development
+#### Development (Mobile + Backend)
 
-Run the development server with hot reload:
-
+**1. Start local blockchain:**
 ```bash
-bun run dev
+cd smart-contracts && npx hardhat node
 ```
 
-The server will start and watch for file changes.
+**2. Deploy contract (new terminal):**
+```bash
+cd smart-contracts && npx hardhat run scripts/deploy.ts --network localhost
+```
+
+**3. Start ngrok tunnel (for mobile access):**
+```bash
+ngrok http 3000
+# Copy the https URL and update API_BASE_URL in backend/.env
+```
+
+**4. Start backend (new terminal):**
+```bash
+cd backend && bun run dev
+```
+
+**5. Start mobile (new terminal):**
+```bash
+cd mobile && npx expo start --tunnel
+```
+
+The backend binds to `0.0.0.0:3000` to allow connections from mobile devices via ngrok.
 
 #### Testing Utilities
 
@@ -241,6 +274,34 @@ The **ProofSnap** contract implements the core media provenance system:
 - **MediaRegistered Event**: Emitted when new media is registered
 
 The contract matches the specification in `spec.md` and provides immutable proof storage on Polygon.
+
+#### Switching Networks
+
+The backend supports multiple blockchain networks via environment variables:
+
+| Network | BLOCKCHAIN_NETWORK | RPC_URL | Notes |
+|---------|-------------------|---------|-------|
+| Local | `local` | `http://127.0.0.1:8545` | Hardhat node (no PRIVATE_KEY needed) |
+| Sepolia | `sepolia` | Infura/Alchemy URL | Ethereum testnet |
+| Amoy | `amoy` | Polygon Amoy RPC | Polygon testnet |
+| Polygon | `polygon` | Polygon mainnet RPC | Production |
+
+**To switch networks:**
+
+1. Deploy contract to target network:
+   ```bash
+   npx hardhat run scripts/deploy.ts --network sepolia
+   ```
+
+2. Update `backend/.env`:
+   ```bash
+   BLOCKCHAIN_NETWORK=sepolia
+   RPC_URL=https://sepolia.infura.io/v3/your-key
+   CONTRACT_ADDRESS=0x...deployed-address
+   PRIVATE_KEY=your-wallet-private-key
+   ```
+
+3. Restart backend: `bun run dev`
 
 ## API Endpoints
 

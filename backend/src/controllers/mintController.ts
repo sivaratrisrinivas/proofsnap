@@ -15,10 +15,13 @@ const mintRequestSchema = z.object({
   deviceId: z.string().optional(),
 });
 
-// Base URL for verification links - set via env or defaults to ngrok URL
-// Update this when deploying to production
-const VERIFY_BASE_URL = process.env.API_BASE_URL || "https://094b9beb8fa4.ngrok-free.app";
-console.log(`[Config] VERIFY_BASE_URL: ${VERIFY_BASE_URL}`);
+// Base URL for verification links - MUST be set in .env
+// For dev: your ngrok URL. For prod: your domain
+const VERIFY_BASE_URL = process.env.API_BASE_URL;
+if (!VERIFY_BASE_URL) {
+  console.error("❌ API_BASE_URL not set in .env - verification links will fail!");
+}
+console.log(`[Config] VERIFY_BASE_URL: ${VERIFY_BASE_URL || "NOT SET"}`);
 
 // Use service_role key to bypass RLS for backend operations
 const supabase = createClient(
