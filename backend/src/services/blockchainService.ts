@@ -1,5 +1,6 @@
 import { ethers } from "ethers";
 import { NetworkError, BlockchainError } from "../errors";
+import { retryWithBackoff } from "../utils";
 
 // Network configuration from environment
 // BLOCKCHAIN_NETWORK: "local" | "sepolia" | "amoy" | "polygon"
@@ -80,7 +81,7 @@ export async function registerMediaOnChain(
 export async function getProofFromChain(
   contentHash: string
 ): Promise<any> {
-  try {
+  return retryWithBackoff(async () => {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     const contract = new ethers.Contract(
       CONTRACT_ADDRESS,
@@ -92,18 +93,18 @@ export async function getProofFromChain(
 
     const proof = await contract.getProof(contentHash);
     return proof;
-  } catch (error: any) {
-    console.error("❌ Failed to fetch proof:", error);
-    
-    if (error.code === "NETWORK_ERROR") {
-      throw new NetworkError("Cannot connect to blockchain", 503, error);
+  }, {
+    maxAttempts: 3,
+    initialDelay: 1000,
+    maxDelay: 5000,
+    shouldRetry: (error: any) => {
+      return error?.code === "NETWORK_ERROR" || error?.code === "TIMEOUT";
     }
-    throw new BlockchainError(`Failed to fetch proof: ${error.message}`, error);
-  }
+  });
 }
 
 export async function checkProofExists(contentHash: string): Promise<boolean> {
-  try {
+  return retryWithBackoff(async () => {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     const contract = new ethers.Contract(
       CONTRACT_ADDRESS,
@@ -114,12 +115,12 @@ export async function checkProofExists(contentHash: string): Promise<boolean> {
     };
 
     return await contract.proofExists(contentHash);
-  } catch (error: any) {
-    console.error("❌ Failed to check proof existence:", error);
-    
-    if (error.code === "NETWORK_ERROR") {
-      throw new NetworkError("Cannot connect to blockchain", 503, error);
+  }, {
+    maxAttempts: 3,
+    initialDelay: 1000,
+    maxDelay: 5000,
+    shouldRetry: (error: any) => {
+      return error?.code === "NETWORK_ERROR" || error?.code === "TIMEOUT";
     }
-    throw new BlockchainError(`Failed to check proof: ${error.message}`, error);
-  }
+  });
 }

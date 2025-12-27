@@ -1,5 +1,6 @@
 import { PinataSDK } from "pinata-web3";
 import { AuthenticationError, NetworkError, StorageError } from "../errors";
+import { retryWithBackoff } from "../utils";
 
 const pinata = new PinataSDK({
   pinataJwt: process.env.PINATA_JWT,
@@ -9,27 +10,25 @@ export async function uploadToPinata(
   fileBuffer: Buffer,
   fileName: string
 ): Promise<string> {
-  try {
-    if (!process.env.PINATA_JWT) {
-      throw new AuthenticationError("PINATA_JWT not configured");
-    }
+  if (!process.env.PINATA_JWT) {
+    throw new AuthenticationError("PINATA_JWT not configured");
+  }
 
+  return retryWithBackoff(async () => {
     const file = new File([fileBuffer], fileName, { type: "application/octet-stream" });
     const uploadResponse = await pinata.upload.file(file);
     const ipfsHash = uploadResponse.IpfsHash;
     console.log(`✅ Uploaded to IPFS: ${ipfsHash}`);
     return ipfsHash;
-  } catch (error: any) {
-    console.error("❌ IPFS upload failed:", error);
-    
-    if (error.status === 401 || error.status === 403) {
-      throw new AuthenticationError("Invalid Pinata credentials", 401, error);
+  }, {
+    maxAttempts: 3,
+    initialDelay: 2000,
+    maxDelay: 10000,
+    shouldRetry: (error: any) => {
+      const status = error?.status || 0;
+      return status >= 500 || status === 429;
     }
-    if (error.status >= 400 && error.status < 500) {
-      throw new NetworkError("IPFS upload failed", error.status, error);
-    }
-    throw new StorageError(`IPFS upload failed: ${error.message}`, error);
-  }
+  });
 }
 
 export function getIpfsUrl(hash: string): string {
