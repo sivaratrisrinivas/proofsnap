@@ -29,9 +29,9 @@ A "Super Normal" camera application that establishes media provenance at the poi
   - `expo-camera`: For capturing media (✅ implemented)
   - `expo-crypto`: For SHA-256 hash generation (✅ implemented)
   - `expo-file-system`: Available for local file manipulation
-  - `ethers` (v6): For wallet creation and blockchain interaction (✅ implemented)
   - `expo-secure-store`: For secure wallet key storage (✅ implemented)
-  - `skia` (React Native Skia): For high-performance watermark compositing (⏳ TODO)
+  - `ethers` (v6): For wallet creation and blockchain interaction (✅ implemented)
+  - `react-native-view-shot`: For capturing watermarked images during share (✅ implemented)
 
 ### Smart Contracts (The Trust Layer)
 - **Blockchain**: Polygon (PoS) / Sepolia (testnet) - Low fees, fast finality
@@ -52,20 +52,31 @@ proofsnap/
 │   ├── test-db.ts          # Supabase database test utility
 │   ├── test-ipfs.ts        # IPFS upload test utility
 │   └── src/                # Source code
-│       ├── controllers/    # HTTP request handlers
-│       │   └── mintController.ts  # Media minting endpoint
-│       └── services/       # Business logic services
-│           ├── ipfsService.ts      # Pinata IPFS integration
-│           └── blockchainService.ts  # Smart contract interaction
+  │       ├── controllers/    # HTTP request handlers
+  │       │   ├── mintController.ts   # Media minting endpoint
+  │       │   └── verifyController.ts # Media verification endpoint
+  │       ├── services/       # Business logic services
+  │       │   ├── ipfsService.ts      # Pinata IPFS integration
+  │       │   └── blockchainService.ts  # Smart contract interaction
+  │       └── errors.ts        # Typed error classes
 ├── mobile/                 # React Native + Expo
 │   ├── App.tsx             # Main React Native component
 │   ├── index.ts            # App entry point
 │   ├── app.json            # Expo configuration
 │   ├── package.json        # Dependencies and scripts
 │   ├── tsconfig.json       # TypeScript configuration
-│   └── src/                # Source code
-│       └── screens/        # Screen components
-│           └── CameraScreen.tsx  # Camera capture screen
+  │   └── src/                # Source code
+  │       ├── components/     # Reusable components
+  │       │   └── WatermarkOverlay.tsx  # Watermark UI overlay
+  │       ├── screens/        # Screen components
+  │       │   ├── CameraScreen.tsx  # Camera capture screen
+  │       │   └── GalleryScreen.tsx # Photo gallery screen
+  │       ├── services/       # API and utility services
+  │       │   ├── apiService.ts     # Backend API client
+  │       │   ├── watermarkService.ts # Watermark utilities
+  │       │   └── storageService.ts  # Local storage (AsyncStorage)
+  │       └── hooks/          # React hooks
+  │           └── useWallet.ts    # Wallet generation and management
 ├── smart-contracts/        # Hardhat project
 │   ├── contracts/          # Solidity smart contracts
 │   │   ├── ProofSnap.sol   # Main contract for media provenance
@@ -331,21 +342,29 @@ The backend supports multiple blockchain networks via environment variables:
       "mediaRecord": { ... }
     }
     ```
-- `GET /api/v1/verify/:hash` - Public verification endpoint
-  - **Response**:
-    ```json
-    {
-      "verified": true,
-      "ipfsHash": "...",
-      "contentHash": "0x...",
-      "blockchainProof": {
-        "timestamp": "...",
-        "creator": "0x...",
-        "txHash": "0x..."
-      },
-      "mediaRecord": { ... }
-    }
-    ```
+ - `GET /api/v1/verify/:hash` - Public verification endpoint (requires blockchain proof)
+   - **Response**:
+     ```json
+     {
+       "verified": true,
+       "status": "VERIFIED",
+       "proof": {
+         "contentHash": "0x...",
+         "ipfsHash": "...",
+         "ipfsUrl": "https://ipfs.io/ipfs/...",
+         "txHash": "0x...",
+         "createdAt": "2025-01-01T00:00:00Z",
+         "creator": "0x..."
+       },
+       "blockchain": {
+         "timestamp": 1234567890,
+         "creator": "0x...",
+         "locationData": "encrypted:0,0",
+         "deviceId": "device-hash"
+       }
+     }
+     ```
+   - **Note**: Verification fails (404/500) if blockchain proof doesn't exist
 
 ## Architecture Overview
 
@@ -378,19 +397,51 @@ The system follows a hybrid storage model:
 
 The `/api/v1/mint` endpoint implements the complete provenance flow:
 
-1. **Receive Request**: Backend receives base64 image buffer, wallet address, and cryptographic signature
-2. **Verify Signature**: Validates the signature against the wallet address and content hash (ensures authenticity)
-3. **Generate Hash**: Creates SHA-256 content hash from base64 string (matches mobile hashing method)
-4. **Upload to IPFS**: Uploads decoded image buffer to Pinata IPFS gateway, receives IPFS hash
+1. **Validate Request**: Zod schema validates imageBuffer, walletAddress format, and optional signature
+2. **Verify Signature**: Validates `ethers.verifyMessage()` signature matches wallet address + content hash
+3. **Generate Hash**: Creates SHA-256 content hash from **raw image bytes** (decodes base64 → Buffer → SHA256)
+4. **Upload to IPFS**: Uploads image buffer to Pinata (with 3 retry attempts on failures)
 5. **Register on Blockchain**: Calls `ProofSnap.registerMedia()` with content hash, location, and device ID
-6. **Store in Database**: Creates/updates user record and saves media record with:
-   - IPFS hash (for image retrieval)
-   - Content hash (for verification)
-   - Transaction hash (blockchain proof)
-   - Status: VERIFIED
-7. **Return Response**: Returns IPFS URL, content hash, transaction hash, and verification URL
+6. **Verify on Chain**: Confirms proof exists on blockchain before returning success
+7. **Store in Database**: Creates/updates user record and saves media record with:
+    - IPFS hash (for image retrieval)
+    - Content hash (for verification)
+    - Transaction hash (blockchain proof)
+    - Status: VERIFIED
+8. **Return Response**: Returns IPFS URL, content hash, transaction hash, and verification URL
 
 The proof is now permanently stored on-chain and can be verified via `getProof()` on the ProofSnap contract.
+
+### Security Features
+
+**Cryptographic Provenance:**
+- SHA-256 hashing of raw image bytes (consistent across mobile/backend)
+- Ethers.js cryptographic signing with wallet private keys
+- Signature validation on backend prevents wallet address spoofing
+- Proof registered on blockchain creates immutable record
+
+**Secure Randomness:**
+- Mobile uses `expo-crypto.getRandomBytesAsync()` for wallet key generation
+- No insecure Math.random() polyfills (removed security vulnerability)
+- Private keys stored in `expo-secure-store` (encrypted device storage)
+
+**Network Resilience:**
+- Retry logic with exponential backoff for IPFS uploads (3 attempts)
+- Retry logic for blockchain queries (3 attempts)
+- Typed error handling with proper HTTP status codes
+- Automatic detection of transient network failures
+
+**Blockchain Verification:**
+- All proofs require on-chain verification
+- Verification endpoint fails if proof not found on blockchain
+- Database only stores references, blockchain is source of truth
+- Prevents database tampering attacks
+
+**Watermark Integrity:**
+- Watermark overlay shown in UI before sharing
+- View-shot captures overlay into final shared image
+- Original image preserved (hash remains valid)
+- No pixel modification of source image
 
 ## Implementation Status
 
@@ -399,12 +450,14 @@ The proof is now permanently stored on-chain and can be verified via `getProof()
 **Backend:**
 - Bun + Hono API server setup
 - Supabase database integration
-- IPFS upload service (Pinata)
-- Blockchain service (ethers.js v6)
+- IPFS upload service (Pinata) with retry logic
+- Blockchain service (ethers.js v6) with retry logic
 - `/api/v1/mint` endpoint fully functional
-- `/api/v1/verify/:hash` endpoint for public verification
+- `/api/v1/verify/:hash` endpoint for public verification (requires blockchain proof)
 - Cryptographic signature verification (ethers.js `verifyMessage`)
 - Media minting flow (IPFS → Blockchain → Database)
+- Typed error handling (ProofSnapError, AuthenticationError, NetworkError, etc.)
+- Retry logic with exponential backoff for transient failures
 
 **Smart Contracts:**
 - ProofSnap contract deployed and tested
@@ -415,29 +468,33 @@ The proof is now permanently stored on-chain and can be verified via `getProof()
 - Expo project setup with TypeScript
 - CameraScreen component implemented
 - Camera capture with base64 encoding
-- SHA-256 hash generation
+- SHA-256 hash generation (using ethers.js for consistency)
 - Photo preview UI
 - Camera permissions handling
 - Expo Camera plugin configured
 - Wallet generation and management (useWallet hook)
-- Secure wallet key storage with expo-secure-store
+- Secure wallet key storage with expo-secure-store (no insecure polyfills)
 - Cryptographic image hash signing with ethers.js
 - Wallet UI overlay in HomeScreen
 - API service for minting photos
 - Full upload integration (IPFS + Blockchain + Database)
 - Gallery view with AsyncStorage persistence
+- Gallery screen with share/delete functionality
+- Watermark overlay component (WatermarkOverlay.tsx)
+- View-shot capture for watermarking shared images
 - Native share functionality with verification links
-- Success screen with transaction details
+- Success screen with transaction details and watermarked preview
+- Tab navigation (Camera ↔ Gallery)
 
 ### ⏳ In Progress / TODO
 
 **Mobile:**
-- Location services integration
-- Device ID generation
-- Enhanced watermark compositing (React Native Skia for high-performance rendering)
+- Location services integration (optional feature)
+- Device ID generation (optional feature)
 
 **Backend:**
 - Production deployment configuration
+- Rate limiting on public API endpoints
 
 ## License
 
