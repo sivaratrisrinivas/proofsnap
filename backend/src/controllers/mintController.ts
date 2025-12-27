@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 import { z } from "zod";
 import { verifyMessage } from "ethers";
+import { AuthenticationError, NetworkError, BlockchainError, ProofSnapError } from "../errors";
 
 // Zod schema for mint request validation
 const mintRequestSchema = z.object({
@@ -150,6 +151,17 @@ export async function mintMedia(c: Context) {
     });
   } catch (error) {
     console.error("❌ Mint failed:", error);
+    
+    if (error instanceof ProofSnapError) {
+      return c.json(
+        { 
+          error: error.message, 
+          code: error.code,
+        },
+        error.statusCode || 500
+      );
+    }
+    
     return c.json({ error: `Mint failed: ${error}` }, 500);
   }
 }

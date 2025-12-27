@@ -1,4 +1,5 @@
 import { ethers } from "ethers";
+import { NetworkError, BlockchainError } from "../errors";
 
 // Network configuration from environment
 // BLOCKCHAIN_NETWORK: "local" | "sepolia" | "amoy" | "polygon"
@@ -55,7 +56,7 @@ export async function registerMediaOnChain(
 
     const receipt = await tx.wait();
     if (!receipt) {
-      throw new Error("Transaction receipt is null");
+      throw new BlockchainError("Transaction receipt is null");
     }
     console.log(`✅ Transaction confirmed: ${receipt.hash}`);
 
@@ -63,9 +64,16 @@ export async function registerMediaOnChain(
       txHash: receipt.hash,
       blockNumber: receipt.blockNumber,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ Blockchain registration failed:", error);
-    throw new Error(`Blockchain registration failed: ${error}`);
+    
+    if (error.code === "NETWORK_ERROR") {
+      throw new NetworkError("Cannot connect to blockchain", 503, error);
+    }
+    if (error.code === "INSUFFICIENT_FUNDS") {
+      throw new BlockchainError("Insufficient funds for transaction", error);
+    }
+    throw new BlockchainError(`Blockchain registration failed: ${error.message}`, error);
   }
 }
 
@@ -84,9 +92,13 @@ export async function getProofFromChain(
 
     const proof = await contract.getProof(contentHash);
     return proof;
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ Failed to fetch proof:", error);
-    throw new Error(`Failed to fetch proof: ${error}`);
+    
+    if (error.code === "NETWORK_ERROR") {
+      throw new NetworkError("Cannot connect to blockchain", 503, error);
+    }
+    throw new BlockchainError(`Failed to fetch proof: ${error.message}`, error);
   }
 }
 
@@ -102,8 +114,12 @@ export async function checkProofExists(contentHash: string): Promise<boolean> {
     };
 
     return await contract.proofExists(contentHash);
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ Failed to check proof existence:", error);
-    throw new Error(`Failed to check proof: ${error}`);
+    
+    if (error.code === "NETWORK_ERROR") {
+      throw new NetworkError("Cannot connect to blockchain", 503, error);
+    }
+    throw new BlockchainError(`Failed to check proof: ${error.message}`, error);
   }
 }
