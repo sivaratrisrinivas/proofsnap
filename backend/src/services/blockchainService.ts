@@ -13,6 +13,7 @@ console.log(`[Blockchain] Network: ${BLOCKCHAIN_NETWORK}, RPC: ${RPC_URL.substri
 const PROOFSNAP_ABI = [
   "function registerMedia(bytes32 _contentHash, string calldata _locationData, string calldata _deviceId) external",
   "function getProof(bytes32 _contentHash) external view returns (tuple(bytes32 contentHash, uint256 timestamp, address creator, string locationData, string deviceId))",
+  "function proofExists(bytes32 _contentHash) external view returns (bool)",
 ];
 
 // Get signer based on network type
@@ -86,5 +87,23 @@ export async function getProofFromChain(
   } catch (error) {
     console.error("❌ Failed to fetch proof:", error);
     throw new Error(`Failed to fetch proof: ${error}`);
+  }
+}
+
+export async function checkProofExists(contentHash: string): Promise<boolean> {
+  try {
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const contract = new ethers.Contract(
+      CONTRACT_ADDRESS,
+      PROOFSNAP_ABI,
+      provider
+    ) as ethers.Contract & {
+      proofExists: (hash: string) => Promise<boolean>;
+    };
+
+    return await contract.proofExists(contentHash);
+  } catch (error) {
+    console.error("❌ Failed to check proof existence:", error);
+    throw new Error(`Failed to check proof: ${error}`);
   }
 }

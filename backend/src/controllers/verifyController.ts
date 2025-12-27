@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import { createClient } from "@supabase/supabase-js";
-import { getProofFromChain } from "../services/blockchainService";
+import { getProofFromChain, checkProofExists } from "../services/blockchainService";
 import { getIpfsUrl } from "../services/ipfsService";
 
 // Use service_role key to bypass RLS for backend operations
@@ -46,16 +46,39 @@ export async function verifyMedia(c: Context) {
       }, 404);
     }
 
-    // Optionally verify on blockchain
-    let blockchainProof = null;
+    // Verify on blockchain - check proof exists first
+    if (!mediaRecord.content_hash) {
+      return c.json({
+        verified: false,
+        error: "Missing content hash",
+        message: "Database record missing content hash",
+      }, 500);
+    }
+
+    let blockchainProof;
     try {
-      if (mediaRecord.content_hash) {
-        blockchainProof = await getProofFromChain(mediaRecord.content_hash);
-        console.log(`✅ Blockchain proof found`);
+      const exists = await checkProofExists(mediaRecord.content_hash);
+      if (!exists) {
+        console.error(`❌ Proof not found on blockchain for hash: ${mediaRecord.content_hash}`);
+        return c.json({
+          verified: false,
+          error: "Proof not found",
+          message: "No blockchain proof exists for this media",
+        }, 404);
       }
+
+      blockchainProof = await getProofFromChain(mediaRecord.content_hash);
+      console.log(`✅ Blockchain proof found`);
     } catch (chainError) {
-      console.warn(`⚠️ Could not fetch blockchain proof:`, chainError);
-      // Continue without blockchain data - DB is source of truth for now
+      console.error(`❌ Blockchain verification failed:`, chainError);
+      return c.json(
+        {
+          verified: false,
+          error: "Blockchain verification failed",
+          message: "Could not verify proof on blockchain",
+        },
+        500
+      );
     }
 
     const response = {
@@ -69,12 +92,12 @@ export async function verifyMedia(c: Context) {
         createdAt: mediaRecord.created_at,
         creator: (mediaRecord.users as any)?.wallet_address || null,
       },
-      blockchain: blockchainProof ? {
+      blockchain: {
         timestamp: Number(blockchainProof.timestamp),
         creator: blockchainProof.creator,
         locationData: blockchainProof.locationData,
         deviceId: blockchainProof.deviceId,
-      } : null,
+      },
     };
 
     console.log(`✅ Verification complete for: ${hash}`);
