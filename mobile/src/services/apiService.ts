@@ -1,12 +1,8 @@
 // API Service for ProofSnap Backend
 
-// Configure your backend URL here
-// For local development with Expo Go, use your machine's local IP
-// Find your IP with: hostname -I | awk '{print $1}'
-// e.g., "http://192.168.1.100:3000"
-// 
-// TODO: Replace with your machine's IP address for physical device testing
-const API_BASE_URL = 'https://48cf1e5b403d.ngrok-free.app'; // ngrok tunnel to backend
+// Backend URL from environment variable or fallback to ngrok
+// For local development, ngrok URL is used. For production, use EXPO_PUBLIC_API_URL
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://48cf1e5b403d.ngrok-free.app';
 
 export interface MintRequest {
   imageBuffer: string;      // base64 encoded image

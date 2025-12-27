@@ -26,6 +26,9 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "env": {
+      "EXPO_PUBLIC_API_URL": "https://48cf1e5b403d.ngrok-free.app"
+    },
     "plugins": [
       [
         "expo-camera",
