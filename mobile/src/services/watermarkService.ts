@@ -5,18 +5,11 @@ export interface WatermarkOptions {
   ipfsHash?: string;
 }
 
-/**
- * For MVP: Returns the original image URI
- * The "watermark" is displayed as a UI overlay in the success screen
- * 
- * Future: Use react-native-view-shot to burn overlay into image
- */
 export async function addWatermark(
   imageUri: string,
   options: WatermarkOptions = {}
 ): Promise<string> {
-  console.log('[Watermark] Preparing image with verification overlay (UI-based)');
-  // For MVP, we just return the original - the UI shows the verification badge
+  console.log('[Watermark] Returning original - watermark added via UI overlay during share');
   return imageUri;
 }
 
@@ -55,4 +48,3 @@ export function generateShareMessage(verificationUrl: string): string {
 export function getVerificationUrl(ipfsHash: string): string {
   return `https://proofsnap.app/verify/${ipfsHash}`;
 }
-

@@ -6,7 +6,7 @@
 // e.g., "http://192.168.1.100:3000"
 // 
 // TODO: Replace with your machine's IP address for physical device testing
-const API_BASE_URL = 'https://094b9beb8fa4.ngrok-free.app'; // ngrok tunnel to backend
+const API_BASE_URL = 'https://48cf1e5b403d.ngrok-free.app'; // ngrok tunnel to backend
 
 export interface MintRequest {
   imageBuffer: string;      // base64 encoded image

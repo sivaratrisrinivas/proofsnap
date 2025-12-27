@@ -1,11 +1,13 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Alert, ActivityIndicator, Share } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { captureRef } from 'react-native-view-shot';
 import * as Crypto from 'expo-crypto';
 import { ethers } from 'ethers';
 import { mintMedia, MintResponse } from '../services/apiService';
 import { addWatermark, generateShareMessage } from '../services/watermarkService';
 import { addGalleryItem } from '../services/storageService';
+import WatermarkOverlay from '../components/WatermarkOverlay';
 
 // Define captured photo state type
 interface CapturedPhoto {
@@ -30,6 +32,7 @@ interface CameraScreenProps {
 
 export default function CameraScreen({ wallet }: CameraScreenProps) {
     const cameraRef = useRef<CameraView>(null);
+    const shareRef = useRef<View>(null);
     const [permission, requestPermission] = useCameraPermissions();
     const [capturedPhoto, setCapturedPhoto] = useState<CapturedPhoto | null>(null);
     const [securedPhoto, setSecuredPhoto] = useState<SecuredPhoto | null>(null);
@@ -132,14 +135,8 @@ export default function CameraScreen({ wallet }: CameraScreenProps) {
 
             console.log('✅ Secured!', result);
 
-            // Apply watermark to the image
-            const watermarkedUri = await addWatermark(capturedPhoto.uri, {
-                ipfsHash: result.ipfsHash,
-            });
-
-            // Store secured photo for success screen
             const securedData = {
-                uri: watermarkedUri,
+                uri: capturedPhoto.uri,
                 ipfsHash: result.ipfsHash,
                 ipfsUrl: result.ipfsUrl,
                 txHash: result.txHash,
@@ -161,13 +158,18 @@ export default function CameraScreen({ wallet }: CameraScreenProps) {
     };
 
     const handleShare = async () => {
-        if (!securedPhoto) return;
+        if (!securedPhoto || !shareRef.current) return;
 
         try {
+            const uri = await captureRef(shareRef, {
+                format: 'jpg',
+                quality: 0.9,
+            });
+
             const message = generateShareMessage(securedPhoto.verificationUrl);
             await Share.share({
                 message,
-                url: securedPhoto.verificationUrl,
+                url: uri,
             });
         } catch (error) {
             console.error('Share error:', error);
@@ -183,7 +185,10 @@ export default function CameraScreen({ wallet }: CameraScreenProps) {
     if (securedPhoto) {
         return (
             <View style={styles.container}>
-                <Image source={{ uri: securedPhoto.uri }} style={styles.preview} />
+                <View ref={shareRef} collapsable={false} style={styles.shareContainer}>
+                    <Image source={{ uri: securedPhoto.uri }} style={styles.preview} />
+                    <WatermarkOverlay ipfsHash={securedPhoto.ipfsHash} />
+                </View>
 
                 <View style={styles.successBanner}>
                     <Text style={styles.successIcon}>✅</Text>
@@ -285,6 +290,15 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         backgroundColor: '#000',
+    },
+    shareContainer: {
+        flex: 1,
+        width: '100%',
+        position: 'relative',
+    },
+    shareImageWrapper: {
+        flex: 1,
+        width: '100%',
     },
     camera: {
         flex: 1,
